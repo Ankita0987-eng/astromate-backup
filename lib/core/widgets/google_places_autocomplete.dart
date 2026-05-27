@@ -133,18 +133,24 @@ class _GooglePlacesAutocompleteState extends ConsumerState<GooglePlacesAutocompl
 
     try {
       final details = await ref.read(googlePlacesServiceProvider).getPlaceDetails(suggestion.placeId);
-      widget.onLocationSelected(suggestion.description, details);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not fetch location details: $e')),
-        );
-      }
-    } finally {
+      
       if (mounted) {
         setState(() {
           _isFetchingDetails = false;
         });
+        widget.onLocationSelected(suggestion.description, details);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isFetchingDetails = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not fetch location details: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }

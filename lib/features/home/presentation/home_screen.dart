@@ -77,7 +77,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           error: (e, _) => Center(child: Text('Error: $e')),
           data: (profile) {
             if (profile == null) {
-              return const Center(child: Text('Loading profile...'));
+              if (!_redirectedToSetup) {
+                _redirectedToSetup = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Future.delayed(const Duration(milliseconds: 700), () {
+                    if (!mounted) return;
+                    final currentProfile = ref.read(userProfileProvider);
+                    currentProfile.maybeWhen(
+                      data: (value) {
+                        if (value == null) {
+                          context.push('/profile/setup');
+                        }
+                      },
+                      orElse: () {},
+                    );
+                  });
+                });
+              }
+
+              return const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Getting your profile ready...'),
+                  ],
+                ),
+              );
             }
             // Redirect to profile setup once — not on every rebuild.
             if (!profile.isProfileComplete && !_redirectedToSetup) {
