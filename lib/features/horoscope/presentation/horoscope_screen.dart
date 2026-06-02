@@ -67,7 +67,7 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen> with SingleTi
             ),
           );
         }
-        return _buildHoroscopeTab('daily', chart.zodiacSign, context, isDark);
+        return _buildHoroscopeTab('daily', chart.sunSign, context, isDark);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, st) => Center(
@@ -89,7 +89,7 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen> with SingleTi
             ),
           );
         }
-        return _buildHoroscopeTab('weekly', chart.zodiacSign, context, isDark);
+        return _buildHoroscopeTab('weekly', chart.sunSign, context, isDark);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, st) => Center(
@@ -111,7 +111,7 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen> with SingleTi
             ),
           );
         }
-        return _buildHoroscopeTab('monthly', chart.zodiacSign, context, isDark);
+        return _buildHoroscopeTab('monthly', chart.sunSign, context, isDark);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, st) => Center(
@@ -133,7 +133,7 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen> with SingleTi
             ),
           );
         }
-        return _buildHoroscopeTab('yearly', chart.zodiacSign, context, isDark);
+        return _buildHoroscopeTab('yearly', chart.sunSign, context, isDark);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, st) => Center(
@@ -143,39 +143,50 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen> with SingleTi
   }
 
   Widget _buildHoroscopeTab(String periodType, String zodiacSign, BuildContext context, bool isDark) {
-    final horoscopeProvider = _getHoroscopeProvider(periodType, zodiacSign);
-    final horoscope = ref.watch(horoscopeProvider);
-    
-    return horoscope.when(
-      data: (data) {
-        if (data == null) {
-          return Center(
-            child: Text(
-              'No $periodType horoscope available',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          );
-        }
-        return _buildHoroscopeContent(data, context, isDark);
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, st) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Error loading horoscope: $err'),
-            ],
-          ),
-        ),
-      ),
-    );
+    switch (periodType) {
+      case 'daily':
+        final provider = ref.watch(dailyHoroscopeProvider(zodiacSign));
+        return provider.when(
+          data: (d) => _buildHoroscopeContent(d, context, isDark),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, st) => Center(child: Text('Error: $err')),
+        );
+      case 'weekly':
+        final provider = ref.watch(weeklyHoroscopeProvider(zodiacSign));
+        return provider.when(
+          data: (d) => _buildHoroscopeContent(d, context, isDark),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, st) => Center(child: Text('Error: $err')),
+        );
+      case 'monthly':
+        final provider = ref.watch(monthlyHoroscopeProvider(zodiacSign));
+        return provider.when(
+          data: (d) => _buildHoroscopeContent(d, context, isDark),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, st) => Center(child: Text('Error: $err')),
+        );
+      case 'yearly':
+        final provider = ref.watch(yearlyHoroscopeProvider(zodiacSign));
+        return provider.when(
+          data: (d) => _buildHoroscopeContent(d, context, isDark),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, st) => Center(child: Text('Error: $err')),
+        );
+      default:
+        return const Center(child: Text('Unknown period'));
+    }
   }
 
-  Widget _buildHoroscopeContent(HoroscopeData data, BuildContext context, bool isDark) {
+  Widget _buildHoroscopeContent(HoroscopeData? data, BuildContext context, bool isDark) {
+    if (data == null) {
+      return Center(
+        child: Text(
+          'No horoscope available',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      );
+    }
+    
     final bgColor = isDark ? Colors.grey[900] : Colors.grey[50];
     
     return SingleChildScrollView(
@@ -322,20 +333,5 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen> with SingleTi
         ),
       ),
     );
-  }
-
-  FutureProvider<HoroscopeData?> _getHoroscopeProvider(String periodType, String zodiacSign) {
-    switch (periodType) {
-      case 'daily':
-        return dailyHoroscopeProvider(zodiacSign);
-      case 'weekly':
-        return weeklyHoroscopeProvider(zodiacSign);
-      case 'monthly':
-        return monthlyHoroscopeProvider(zodiacSign);
-      case 'yearly':
-        return yearlyHoroscopeProvider(zodiacSign);
-      default:
-        return dailyHoroscopeProvider(zodiacSign);
-    }
   }
 }

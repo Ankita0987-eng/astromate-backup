@@ -17,6 +17,12 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/share/presentation/share_card_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/viral/presentation/viral_features_screen.dart';
+import '../../features/home/presentation/home_screen.dart';
+import '../../features/horoscope/presentation/horoscope_screen.dart';
+import '../../features/matching/presentation/matching_screen.dart';
+import '../../features/messaging/presentation/messages_screen.dart';
+import '../../features/messaging/presentation/chat_screen.dart';
+import '../../features/subscription/presentation/subscription_screen.dart';
 import '../../providers/app_providers.dart';
 import '../../data/models/compatibility_report.dart';
 
@@ -79,7 +85,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/home',
-        builder: (_, __) => const MainShellScreen(),
+        builder: (_, __) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/horoscope',
+        builder: (_, __) => const HoroscopeScreen(),
+      ),
+      GoRoute(
+        path: '/matching',
+        builder: (_, __) => const MatchingScreen(),
+      ),
+      GoRoute(
+        path: '/messages',
+        builder: (_, __) => const MessagesScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:matchId',
+        builder: (_, state) {
+          final matchId = state.pathParameters['matchId'] ?? '';
+          final matchName = state.extra as String? ?? 'User';
+          return ChatScreen(matchId: matchId, matchName: matchName);
+        },
+      ),
+      GoRoute(
+        path: '/ai-chat',
+        builder: (_, __) => const AIChatScreen(),
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (_, __) => const SubscriptionScreen(),
       ),
       GoRoute(
         path: '/compatibility/new',
@@ -100,13 +134,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/compatibility/history',
         builder: (_, __) => const CompatibilityHistoryScreen(),
-      ),
-      GoRoute(
-        path: '/ai-chat',
-        builder: (_, state) {
-          final chatId = state.uri.queryParameters['chatId'];
-          return AiChatScreen(chatId: chatId);
-        },
       ),
       GoRoute(
         path: '/premium',

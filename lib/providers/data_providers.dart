@@ -221,3 +221,25 @@ final profileCompleteProvider = FutureProvider.autoDispose((ref) async {
   final profile = await ref.watch(userProfileProvider.future);
   return profile?.isProfileComplete ?? false;
 });
+
+// ============== ADDITIONAL PROVIDERS ==============
+
+final currentUserBirthChartProvider = FutureProvider.autoDispose((ref) async {
+  final repo = ref.watch(astrologyRepositoryProvider);
+  return repo.getBirthChart();
+});
+
+final potentialMatchesProvider = FutureProvider.autoDispose((ref) async {
+  final repo = ref.watch(matchingRepositoryProvider);
+  return repo.getMatchProfiles();
+});
+
+final chatMessagesProvider = FutureProvider.autoDispose.family<List, String>((ref, otherUserId) async {
+  final repo = ref.watch(messagingRepositoryProvider);
+  return repo.getMessages(otherUserId);
+});
+
+final chatMessagesStreamProvider = StreamProvider.autoDispose.family((ref, otherUserId) {
+  final repo = ref.watch(messagingRepositoryProvider);
+  return repo.watchMessages(otherUserId);
+});

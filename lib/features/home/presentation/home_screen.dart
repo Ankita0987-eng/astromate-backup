@@ -1,361 +1,486 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/zodiac_utils.dart';
-import '../../../core/widgets/cosmic_background.dart';
-import '../../../core/widgets/glass_card.dart';
-import '../../../data/services/ads_service.dart';
-import '../../../providers/app_providers.dart';
-import 'widgets/daily_horoscope_card.dart';
-import 'widgets/premium_banner.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/horoscope_card_widget.dart';
+import '../../../core/widgets/match_card_widget.dart';
+import '../../../data/models/horoscope_data.dart';
+import '../../../data/models/match_profile.dart';
+import '../../../providers/data_providers.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  BannerAd? _bannerAd;
-  bool _bannerLoaded = false;
-  bool _redirectedToSetup = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBanner();
-      _updateFcmToken();
-    });
-  }
-
-  Future<void> _updateFcmToken() async {
-    final profile = ref.read(userProfileProvider).valueOrNull;
-    if (profile == null) return;
-    final token = await ref.read(notificationServiceProvider).getToken();
-    if (token != null && token != profile.fcmToken) {
-      await ref.read(userRepositoryProvider).updateFcmToken(profile.uid, token);
-    }
-  }
-
-  void _loadBanner() {
-    final profile = ref.read(userProfileProvider).valueOrNull;
-    if (profile?.isPremium == true) return;
-    _bannerAd?.dispose();
-    _bannerAd = AdsService.instance.createBannerAd(
-      onLoaded: (ad) {
-        if (mounted) setState(() => _bannerLoaded = true);
-      },
-    );
-    if (_bannerAd == null) {
-      // Ads not ready yet; retry after deferred init.
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) _loadBanner();
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _bannerAd?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final profileAsync = ref.watch(userProfileProvider);
-
-    return CosmicBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: profileAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
-          data: (profile) {
-            if (profile == null) {
-              if (!_redirectedToSetup) {
-                _redirectedToSetup = true;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  Future.delayed(const Duration(milliseconds: 700), () {
-                    if (!mounted) return;
-                    final currentProfile = ref.read(userProfileProvider);
-                    currentProfile.maybeWhen(
-                      data: (value) {
-                        if (value == null) {
-                          context.push('/profile/setup');
-                        }
-                      },
-                      orElse: () {},
-                    );
-                  });
-                });
-              }
-
-              return const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Getting your profile ready...'),
-                  ],
-                ),
-              );
-            }
-            // Redirect to profile setup once — not on every rebuild.
-            if (!profile.isProfileComplete && !_redirectedToSetup) {
-              _redirectedToSetup = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) context.push('/profile/setup');
-              });
-            }
-            final sign = profile.zodiacSign ?? 'Pisces';
-            return RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(userProfileProvider);
-              },
-              child: CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    floating: true,
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hello, ${profile.displayName.split(' ').first}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.moonSilver,
-                          ),
-                        ),
-                        const Text('Cosmic Dashboard'),
-                      ],
-                    ),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.settings_outlined),
-                        onPressed: () => context.push('/settings'),
-                      ),
-                    ],
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        Row(
-                          children: [
-                            Text(
-                              ZodiacUtils.emojiForSign(sign),
-                              style: const TextStyle(fontSize: 40),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    sign,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  const Text(
-                                    "Today's cosmic energy is rising",
-                                    style: TextStyle(color: AppColors.moonSilver),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ).animate().fadeIn(),
-                        const SizedBox(height: 16),
-                        if (!profile.isPremium) const PremiumBanner(),
-                        const SizedBox(height: 16),
-                        DailyHoroscopeCard(zodiacSign: sign),
-                        const SizedBox(height: 16),
-                        const _QuickActions(),
-                        const SizedBox(height: 16),
-                        _LoveEnergyCard(sign: sign),
-                        const SizedBox(height: 16),
-                        _InsightGrid(sign: sign),
-                        if (_bannerLoaded && _bannerAd != null && !profile.isPremium) ...[
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            height: 50,
-                            child: AdWidget(ad: _bannerAd!),
-                          ),
-                        ],
-                        const SizedBox(height: 80),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionChip(
-            icon: Icons.favorite,
-            label: 'Match',
-            onTap: () => context.push('/compatibility/new'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionChip(
-            icon: Icons.chat_bubble_outline,
-            label: 'AI Chat',
-            onTap: () => context.push('/ai-chat'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionChip(
-            icon: Icons.auto_awesome,
-            label: 'Viral',
-            onTap: () => context.push('/viral'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
-        children: [
-          Icon(icon, color: AppColors.stellarPink),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoveEnergyCard extends ConsumerWidget {
-  const _LoveEnergyCard({required this.sign});
-
-  final String sign;
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder(
-      future: ref.read(astrologyServiceProvider).getDailyHoroscope(sign),
-      builder: (context, snap) {
-        final energy = snap.data?.loveEnergy ?? 72;
-        return GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Love Energy', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: energy / 100,
-                  minHeight: 10,
-                  backgroundColor: AppColors.glassWhite,
-                  color: AppColors.stellarPink,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('$energy% — ${snap.data?.cosmicEnergy ?? "Harmonious"} vibe'),
-            ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final userBirthChart = ref.watch(currentUserBirthChartProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        title: const Text('Cosmic Match'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () => context.push('/notifications'),
           ),
-        );
-      },
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => context.push('/profile'),
+          ),
+        ],
+      ),
+      body: userBirthChart.when(
+        data: (chart) {
+          if (chart == null) {
+            return _buildOnboardingPrompt(context);
+          }
+          return _buildDashboard(context, isDark, chart);
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, st) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error: $err'),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
-}
 
-class _InsightGrid extends StatelessWidget {
-  const _InsightGrid({required this.sign});
-
-  final String sign;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.4,
-      children: [
-        _InsightTile('Compatibility', 'Find your match', Icons.favorite, () {
-          context.push('/compatibility/new');
-        }),
-        _InsightTile('Soulmate %', 'Calculate now', Icons.bolt, () {
-          context.push('/compatibility/new');
-        }),
-        _InsightTile('Twin Flame', 'Detector', Icons.local_fire_department, () {
-          context.push('/viral');
-        }),
-        _InsightTile('Celebrity', 'Your match', Icons.star, () {
-          context.push('/viral');
-        }),
-      ],
-    );
-  }
-}
-
-class _InsightTile extends StatelessWidget {
-  const _InsightTile(this.title, this.sub, this.icon, this.onTap);
-
-  final String title;
-  final String sub;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      onTap: onTap,
+  Widget _buildOnboardingPrompt(BuildContext context) {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: AppColors.auroraBlue),
-          const Spacer(),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(sub, style: const TextStyle(fontSize: 12, color: AppColors.moonSilver)),
+          const Icon(Icons.star, size: 64, color: Colors.purple),
+          const SizedBox(height: 24),
+          Text(
+            'Welcome to Cosmic Match',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Create your birth chart to unlock your cosmic profile',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () => context.push('/birth-chart'),
+            child: const Text('Create Birth Chart'),
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildDashboard(BuildContext context, bool isDark, dynamic chart) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildGreetingCard(context, isDark, chart),
+            const SizedBox(height: 24),
+            _buildCosmicEnergySection(context, isDark),
+            const SizedBox(height: 24),
+            _buildHoroscopeSection(context, isDark),
+            const SizedBox(height: 24),
+            _buildRecommendedMatchesSection(context, isDark),
+            const SizedBox(height: 24),
+            _buildQuickActions(context),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGreetingCard(BuildContext context, bool isDark, dynamic chart) {
+    final bgColor = isDark ? Colors.grey[900] : Colors.purple.shade50;
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.shade400,
+            Colors.pink.shade400,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Good ${_getTimeOfDay()}',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            chart.sunSign != null ? '${chart.sunSign} Native' : 'Cosmic Seeker',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildGreetingMetric('Birth Chart', '✓', Colors.white),
+              _buildGreetingMetric('Profile', '90%', Colors.white),
+              _buildGreetingMetric('Matches', '12', Colors.white),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGreetingMetric(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCosmicEnergySection(BuildContext context, bool isDark) {
+    final bgColor = isDark ? Colors.grey[900] : Colors.grey[50];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Today\'s Cosmic Energy',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        Card(
+          color: bgColor,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 120,
+                  child: CustomPaint(
+                    painter: CosmicEnergyPainter(),
+                    size: Size.infinite,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Energy Score: 78/100',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Excellent day for new connections',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHoroscopeSection(BuildContext context, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Today\'s Horoscope',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            GestureDetector(
+              onTap: () => context.push('/horoscope'),
+              child: Text(
+                'View All',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.purple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 200,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            itemBuilder: (context, index) {
+              final mockHoroscope = HoroscopeData(
+                id: 'daily_$index',
+                zodiacSign: 'Libra',
+                periodType: 'daily',
+                text: 'Today brings new opportunities for connection and growth. Trust your instincts.',
+                luckyNumber: 7,
+                luckyColor: 'Purple',
+                luckyGemstone: 'Amethyst',
+                moodScore: 8,
+                energyScore: 7,
+                loveScore: 9,
+                healthScore: 8,
+                wealthScore: 7,
+                date: DateTime.now(),
+                expiresAt: DateTime.now().add(const Duration(days: 1)),
+              );
+              
+              return Padding(
+                padding: EdgeInsets.only(right: index < 2 ? 12 : 0),
+                child: HoroscopeCard(
+                  horoscope: mockHoroscope,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendedMatchesSection(BuildContext context, bool isDark) {
+    final bgColor = isDark ? Colors.grey[900] : Colors.grey[50];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recommended for You',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            GestureDetector(
+              onTap: () => context.push('/matching'),
+              child: Text(
+                'See All',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.purple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 320,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            itemBuilder: (context, index) {
+              final mockProfile = MatchProfile(
+                userId: 'user_$index',
+                displayName: 'Alex',
+                age: 26,
+                gender: 'Female',
+                location: 'San Francisco',
+                photoUrls: [],
+                zodiacSign: 'Libra',
+                moonSign: 'Leo',
+                ascendant: 'Sagittarius',
+                interests: ['Music', 'Travel', 'Adventure'],
+                bio: 'Adventure seeker, love music and travel',
+                relationshipGoal: 'Serious relationship',
+                isVerified: true,
+                createdAt: DateTime.now(),
+                lastActive: DateTime.now(),
+              );
+              
+              return Padding(
+                padding: EdgeInsets.only(right: index < 2 ? 12 : 0),
+                child: MatchCard(
+                  profile: mockProfile,
+                  compatibilityScore: 92,
+                  onLike: () {},
+                  onDislike: () {},
+                  onSuperLike: () {},
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                context,
+                icon: Icons.favorite,
+                label: 'Find Matches',
+                onTap: () => context.push('/matching'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                context,
+                icon: Icons.chat,
+                label: 'Messages',
+                onTap: () => context.push('/messages'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                context,
+                icon: Icons.auto_awesome,
+                label: 'AI Astro',
+                onTap: () => context.push('/ai-chat'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                context,
+                icon: Icons.card_membership,
+                label: 'Premium',
+                onTap: () => context.push('/subscription'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? Colors.grey[900] : Colors.grey[50];
+
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: Colors.purple),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getTimeOfDay() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Morning';
+    if (hour < 17) return 'Afternoon';
+    return 'Evening';
+  }
+}
+
+class CosmicEnergyPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.purple.withOpacity(0.3)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final fillPaint = Paint()
+      ..color = Colors.purple.withOpacity(0.1)
+      ..style = PaintingStyle.fill;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // Draw energy circles
+    for (int i = 0; i < 3; i++) {
+      canvas.drawCircle(center, radius - (i * 15), paint);
+    }
+
+    // Draw energy arc (78%)
+    final arcPaint = Paint()
+      ..color = Colors.purple
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -3.14,
+      (3.14 * 2 * 0.78),
+      false,
+      arcPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CosmicEnergyPainter oldDelegate) => false;
 }
