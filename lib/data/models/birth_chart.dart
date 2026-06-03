@@ -24,6 +24,8 @@ class BirthChart extends Equatable {
     required this.rawData,
     required this.generatedAt,
     this.id,
+    this.venusSign,
+    this.mercurySign,
   });
 
   final String? id;
@@ -31,6 +33,8 @@ class BirthChart extends Equatable {
   final String sunSign;
   final String moonSign;
   final String ascendant;
+  final String? venusSign;
+  final String? mercurySign;
   final Map<String, String> nakshatras; // planet -> nakshatra
   final Map<String, PlanetPosition> planets;
   final Map<String, HouseData> houses;
@@ -52,6 +56,8 @@ class BirthChart extends Equatable {
     String? sunSign,
     String? moonSign,
     String? ascendant,
+    String? venusSign,
+    String? mercurySign,
     Map<String, String>? nakshatras,
     Map<String, PlanetPosition>? planets,
     Map<String, HouseData>? houses,
@@ -73,6 +79,8 @@ class BirthChart extends Equatable {
       sunSign: sunSign ?? this.sunSign,
       moonSign: moonSign ?? this.moonSign,
       ascendant: ascendant ?? this.ascendant,
+      venusSign: venusSign ?? this.venusSign,
+      mercurySign: mercurySign ?? this.mercurySign,
       nakshatras: nakshatras ?? this.nakshatras,
       planets: planets ?? this.planets,
       houses: houses ?? this.houses,

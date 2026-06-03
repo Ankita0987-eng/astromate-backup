@@ -12,6 +12,7 @@ import '../../features/main_shell/main_shell_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/premium/presentation/premium_screen.dart';
 import '../../features/profile/presentation/profile_setup_screen.dart';
+import '../../features/profile/presentation/screens/profile_edit_screen.dart';
 import '../../features/settings/presentation/legal_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/share/presentation/share_card_screen.dart';
@@ -23,6 +24,8 @@ import '../../features/matching/presentation/matching_screen.dart';
 import '../../features/messaging/presentation/messages_screen.dart';
 import '../../features/messaging/presentation/chat_screen.dart';
 import '../../features/subscription/presentation/subscription_screen.dart';
+import '../../features/premium/presentation/premium_subscription_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../providers/app_providers.dart';
 import '../../data/models/compatibility_report.dart';
 
@@ -160,6 +163,51 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/viral',
         builder: (_, __) => const ViralFeaturesScreen(),
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (_, __) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/horoscope',
+        builder: (_, __) => const HoroscopeScreen(),
+      ),
+      GoRoute(
+        path: '/matching',
+        builder: (_, __) => const MatchingScreen(),
+      ),
+      GoRoute(
+        path: '/messages',
+        builder: (_, __) => const MessagesScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:matchId',
+        builder: (_, state) {
+          final matchId = state.pathParameters['matchId'] ?? '';
+          final extra = state.extra as Map<String, dynamic>?;
+          final matchName = extra?['matchName'] as String? ?? 'Match';
+          return ChatScreen(matchId: matchId, matchName: matchName);
+        },
+      ),
+      GoRoute(
+        path: '/ai-chat',
+        builder: (_, __) => const AIChatScreen(),
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (_, __) => const SubscriptionScreen(),
+      ),
+      GoRoute(
+        path: '/premium-subscription',
+        builder: (_, __) => const PremiumSubscriptionScreen(),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (_, __) => const ProfileEditScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
       ),
     ],
   );

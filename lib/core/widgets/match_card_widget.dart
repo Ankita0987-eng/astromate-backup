@@ -52,15 +52,15 @@ class _MatchCardState extends State<MatchCard> {
                   : '',
               fit: BoxFit.cover,
               placeholder: (context, url) => Container(
-                color: AppColors.primaryDark,
+                color: AppColors.deepSpace,
                 child: const Center(
                   child: CircularProgressIndicator(
-                    color: AppColors.primary,
+                    color: AppColors.nebulaPurple,
                   ),
                 ),
               ),
               errorWidget: (context, url, error) => Container(
-                color: AppColors.primaryDark,
+                color: AppColors.deepSpace,
                 child: const Icon(Icons.error, color: Colors.red),
               ),
             ),
@@ -141,7 +141,7 @@ class _MatchCardState extends State<MatchCard> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(1.5),
                         color: _currentPhotoIndex == index
-                            ? AppColors.primary
+                            ? AppColors.nebulaPurple
                             : Colors.white.withOpacity(0.3),
                       ),
                     ),
@@ -180,13 +180,13 @@ class _MatchCardState extends State<MatchCard> {
               children: [
                 _buildActionButton(
                   icon: Icons.close,
-                  color: AppColors.danger,
+                  color: AppColors.stellarPink,
                   onPressed: widget.onDislike,
                   label: 'Pass',
                 ),
                 _buildActionButton(
                   icon: Icons.favorite,
-                  color: AppColors.success,
+                  color: AppColors.auroraBlue,
                   onPressed: widget.onLike,
                   label: 'Like',
                   size: 56,
@@ -224,7 +224,7 @@ class _MatchCardState extends State<MatchCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.7),
+        color: AppColors.nebulaPurple.withOpacity(0.7),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -241,13 +241,13 @@ class _MatchCardState extends State<MatchCard> {
   Widget _buildCompatibilityBadge(int score) {
     Color scoreColor;
     if (score >= 80) {
-      scoreColor = AppColors.success;
+      scoreColor = AppColors.auroraBlue;
     } else if (score >= 60) {
-      scoreColor = AppColors.primary;
+      scoreColor = AppColors.nebulaPurple;
     } else if (score >= 40) {
       scoreColor = AppColors.warning;
     } else {
-      scoreColor = AppColors.danger;
+      scoreColor = AppColors.stellarPink;
     }
 
     return Container(

@@ -75,8 +75,9 @@ class AppValidators {
   static String? validateEmail(String? email) {
     if (email == null || email.isEmpty) return 'Email is required';
     
+    // Simple email validation
     final pattern = RegExp(
-      r'^[a-zA-Z0-9.!#$%&\'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)*$',
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
     
     if (!pattern.hasMatch(email)) return 'Please enter a valid email address';

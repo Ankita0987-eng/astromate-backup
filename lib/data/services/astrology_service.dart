@@ -383,10 +383,18 @@ class AstrologyService {
       final degree = ((seed + i * 29) % 3000) / 100.0;
       final isRetrograde = (seed + i) % 7 == 0;
       return PlanetPosition(
-        planet: planetNames[i],
+        name: planetNames[i],
         sign: signs[s],
         degree: degree,
+        minutes: ((seed + i * 13) % 60).toInt(),
+        seconds: ((seed + i * 7) % 60).toInt(),
         isRetrograde: isRetrograde,
+        house: ((seed + i * 3) % 12 + 1).toInt(),
+        longitude: degree,
+        latitude: ((seed + i * 11) % 100) / 100.0 - 0.5,
+        speed: ((seed + i * 5) % 20) / 10.0,
+        aspectScore: ((seed + i * 17) % 100).toInt(),
+        interpretation: 'Planet ${planetNames[i]} in ${signs[s]}',
       );
     });
   }
